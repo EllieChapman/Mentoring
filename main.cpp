@@ -21,6 +21,40 @@ static env empty();
 static env extend(env, name, value);
 static value lookup(env, name);
 static exp let(name bound, exp rhs, exp body);
+exp call1(name f,exp arg); // f(arg)
+
+
+class Program;
+typedef Program* program;
+class Defs;
+typedef Defs* defs;
+class Def;
+typedef Def* def;
+
+
+program makeProgram(defs, exp main);
+defs nilDefs();
+defs consDefs(def,defs);
+def def1(name func_name, name arg, exp body);
+value execute(program);
+
+// mythical syntax
+//
+// def square(x): x*x
+//
+// def fact(x):
+//     if x < 1:
+//       1
+//     else:
+//       x * fact (n-1)
+
+
+void crash(std::string mes)
+{
+  printf("CRASH: %s\n", mes.c_str());
+  fflush(stdout);
+  abort();
+}
 
 
 void t_env(exp example, int expected, env env) {
@@ -66,14 +100,22 @@ void test(void) {
 int main()
 {
     std::cout << "c-interpreter" << std::endl;
-    test();
+    // test(); // EBC remember to comment back
+
+    def timestwo = def1("timestwo", "x", add(var("x"), var("x")));
+    defs all_def = consDefs(timestwo, nilDefs());
+
+    program my_program = makeProgram(all_def, add(num(9), call1("timestwo", add(num(5), num(9)))));
+    value result = execute(my_program);
+    std::cout << result << std::endl;
+
     return 0;
 }
 
 class Exp
 {
 public:
-    virtual value eval(env) = 0;
+    virtual value eval(defs ds, env) = 0;
     virtual std::string pp() = 0;
 };
 
@@ -82,7 +124,7 @@ class Num : public Exp
 public:
     Num(int n) : _num(n) {}
 
-    value eval(env)
+    value eval(defs ds, env)
     {
         return _num;
     }
@@ -100,7 +142,7 @@ class Var : public Exp
 public:
     Var(std::string s) : _name(s) {}
 
-    value eval(env env)
+    value eval(defs, env env)
     {
         return lookup(env, _name);
     }
@@ -118,9 +160,9 @@ class Add : public Exp
 public:
     Add(exp a, exp b) : _a(a), _b(b) {}
 
-    value eval(env env)
+    value eval(defs ds, env env)
     {
-        return _a->eval(env) + _b->eval(env);
+        return _a->eval(ds, env) + _b->eval(ds, env);
     }
 
     std::string pp()
@@ -137,9 +179,9 @@ class Sub : public Exp
 public:
     Sub(exp a, exp b) : _a(a), _b(b) {}
 
-    value eval(env env)
+    value eval(defs ds, env env)
     {
-        return _a->eval(env) - _b->eval(env);
+        return _a->eval(ds, env) - _b->eval(ds, env);
     }
 
     std::string pp()
@@ -156,9 +198,9 @@ class Less : public Exp
 public:
     Less(exp a, exp b) : _a(a), _b(b) {}
 
-    value eval(env env)
+    value eval(defs ds, env env)
     {
-        return _a->eval(env) < _b->eval(env);
+        return _a->eval(ds, env) < _b->eval(ds, env);
     }
 
     std::string pp()
@@ -175,15 +217,15 @@ class Ite : public Exp
 public:
     Ite(exp a, exp b, exp c) : _a(a), _b(b), _c(c) {}
 
-    value eval(env env)
+    value eval(defs ds, env env)
     {
-        if (_a->eval(env))
+        if (_a->eval(ds, env))
         {
-            return _b->eval(env);
+            return _b->eval(ds, env);
         }
         else
         {
-            return _c->eval(env);
+            return _c->eval(ds, env);
         }
     }
 
@@ -202,11 +244,11 @@ class Let : public Exp
 public:
     Let(name x, exp rhs, exp body) : _x(x), _rhs(rhs), _body(body) {}
 
-    value eval(env env1)
+    value eval(defs ds, env env1)
     {
-        value v = _rhs->eval(env1);
+        value v = _rhs->eval(ds, env1);
         env env2 = extend(env1, _x, v);
-        return _body->eval(env2);
+        return _body->eval(ds, env2);
     }
 
     std::string pp()
@@ -219,9 +261,10 @@ private:
     exp _body;
 };
 
+
 static value eval(exp e, env env)
 {
-    return e->eval(env);
+    return e->eval(nilDefs(), env);
 }
 static std::string pp(exp e)
 {
@@ -299,6 +342,109 @@ public:
     }
 };
 
+class Def
+{
+public:
+  virtual name getName() = 0;
+  virtual value apply(value) = 0;
+};
+
+class Def1 : public Def
+{
+public:
+    Def1(name f, name a, exp body) : _func_name(f), _arg_name(a), _body(body) {};
+
+    name getName()
+    {
+        return _func_name;
+    }
+
+    value apply(value v)
+    {
+        env env1 = extend(empty(), _arg_name, v);
+        return _body->eval(nilDefs(), env1);
+    }
+
+private:
+    name _func_name;
+    name _arg_name;
+    exp _body;
+};
+
+class Defs
+{
+public:
+    virtual def findDef(name) = 0;
+};
+
+class NilDefs : public Defs
+{
+public:
+    def findDef(name n)
+    {
+        crash("trying to find def in nil defs!");
+        return 0;
+    }
+};
+
+class ConsDefs : public Defs
+{
+public:
+    ConsDefs(def d, defs ds) : _first_def(d), _remaining_defs(ds) {}
+
+    def findDef(name n)
+    {
+        if (_first_def->getName() == n)
+        {
+            return _first_def;
+        }
+        else
+        {
+            return _remaining_defs->findDef(n);
+        }
+    }
+
+private:
+    def _first_def;
+    defs _remaining_defs;
+};
+
+class Call1 : public Exp
+{
+public:
+    Call1(name f, exp ap) : _func_name(f), _actual_parameter(ap) {}
+
+    value eval(defs ds, env env)
+    {
+        value v = _actual_parameter->eval(ds, env);
+
+        return ds->findDef(_func_name)->apply(v);
+    }
+
+    std::string pp()
+    {
+        return _func_name + "(" + _actual_parameter->pp() + ")";
+    }
+private:
+    name _func_name;
+    exp _actual_parameter;
+};
+
+class Program
+{
+public:
+    Program(defs ds, exp e) : _theDefs(ds), _mainExp(e) {}
+    value execute()
+    {
+        return _mainExp->eval(_theDefs, empty());
+    }
+private:
+    defs _theDefs;
+    exp _mainExp;
+};
+
+
+
 env empty()
 {
     return new EmptyEnv();
@@ -310,4 +456,30 @@ env extend(env env, name name, value value)
 value lookup(env env, name name)
 {
     return env->lookup(name);
+}
+
+
+program makeProgram(defs ds, exp main)
+{
+    return new Program(ds, main);
+}
+defs nilDefs()
+{
+    return new NilDefs();
+}
+defs consDefs(def d,defs ds)
+{
+    return new ConsDefs(d, ds);
+}
+def def1(name func_name, name arg, exp body)
+{
+    return new Def1(func_name, arg, body);
+}
+value execute(program p)
+{
+    return p->execute();
+}
+exp call1(name f, exp arg)
+{
+    return new Call1(f, arg);
 }
