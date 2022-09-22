@@ -14,6 +14,7 @@ static std::string pp(exp);
 static exp num(int);
 static exp add(exp,exp);
 static exp sub(exp,exp);
+static exp mul(exp,exp);
 static exp less(exp,exp);
 static exp ite(exp,exp,exp);
 static exp var(name);
@@ -109,6 +110,22 @@ int main()
     value result = execute(my_program);
     std::cout << result << std::endl;
 
+
+    def quad = def1("quad", "x", add(call1("timestwo", var("x")), call1("timestwo", var("x"))));
+    defs more_def = consDefs(quad, all_def);
+    program my_program2 = makeProgram(more_def, call1("quad", num(2)));
+
+    value result2 = execute(my_program2);
+    std::cout << result2 << std::endl;
+
+
+    def fact = def1("fact", "x", ite(less(var("x"), num(1)), num(1), mul(var("x"), call1("fact", sub(var("x"), num(1))))));
+    defs even_more_def = consDefs(fact, more_def);
+    program my_program3 = makeProgram(even_more_def, call1("fact", num(5)));
+
+    value result3 = execute(my_program3);
+    std::cout << result3 << std::endl;
+
     return 0;
 }
 
@@ -168,6 +185,25 @@ public:
     std::string pp()
     {
         return "(" + _a->pp() + " + " + _b->pp() + ")";
+    }
+private:
+    exp _a;
+    exp _b;
+};
+
+class Mul : public Exp
+{
+public:
+    Mul(exp a, exp b) : _a(a), _b(b) {}
+
+    value eval(defs ds, env env)
+    {
+        return _a->eval(ds, env) * _b->eval(ds, env);
+    }
+
+    std::string pp()
+    {
+        return "(" + _a->pp() + " X " + _b->pp() + ")";
     }
 private:
     exp _a;
@@ -288,6 +324,11 @@ exp sub(exp a, exp b)
 {
     return new Sub(a, b);
 }
+exp mul(exp a,exp b)
+{
+    return new Mul(a, b);
+    // return new binop(a,b,+)
+}
 exp less(exp a, exp b)
 {
     return new Less(a, b);
@@ -346,7 +387,7 @@ class Def
 {
 public:
   virtual name getName() = 0;
-  virtual value apply(value) = 0;
+  virtual value apply(value, defs) = 0;
 };
 
 class Def1 : public Def
@@ -359,10 +400,10 @@ public:
         return _func_name;
     }
 
-    value apply(value v)
+    value apply(value v, defs ds)
     {
         env env1 = extend(empty(), _arg_name, v);
-        return _body->eval(nilDefs(), env1);
+        return _body->eval(ds, env1);
     }
 
 private:
@@ -382,7 +423,7 @@ class NilDefs : public Defs
 public:
     def findDef(name n)
     {
-        crash("trying to find def in nil defs!");
+        crash("trying to find def " + n + " in nil defs!");
         return 0;
     }
 };
@@ -417,9 +458,8 @@ public:
     value eval(defs ds, env env)
     {
         value v = _actual_parameter->eval(ds, env);
-
-        return ds->findDef(_func_name)->apply(v);
-    }
+        def d = ds->findDef(_func_name);
+        return d->apply(v, ds);
 
     std::string pp()
     {
