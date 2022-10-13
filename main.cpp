@@ -1,44 +1,10 @@
 #include <iostream>
 #include "lexer.h"
+#include "parser.h"
 
 // interface...
-class Exp;
-class Env;
+#include "ast.h"
 
-typedef Exp* exp;
-typedef int value;
-typedef std::string name;
-typedef Env* env;
-
-static value eval(exp, env);
-static std::string pp(exp);
-static exp num(int);
-static exp add(exp,exp);
-static exp sub(exp,exp);
-static exp mul(exp,exp);
-static exp less(exp,exp);
-static exp ite(exp,exp,exp);
-static exp var(name);
-static env empty();
-static env extend(env, name, value);
-static value lookup(env, name);
-static exp let(name bound, exp rhs, exp body);
-exp call1(name f,exp arg); // f(arg)
-
-
-class Program;
-typedef Program* program;
-class Defs;
-typedef Defs* defs;
-class Def;
-typedef Def* def;
-
-
-program makeProgram(defs, exp main);
-defs nilDefs();
-defs consDefs(def,defs);
-def def1(name func_name, name arg, exp body);
-value execute(program);
 
 // mythical syntax
 //
@@ -101,14 +67,29 @@ void test(void) {
 
 void testlexer()
 {
-    // LexState lex_state("(abcde \n + 42345 89 6");
+    LexState lex_state("(3 + 5)");
 
-    LexState lex_state("def fact(x):\n"
-    "if x < 10 then\n"
-    "  1\n"
-    "else\n"
-      "x * fact (n-1);");
+    // LexState lex_state("def fact(x):\n"
+    // "if x < 10 then\n"
+    // "  1\n"
+    // "else\n"
+    //   "x * fact (n-1);");
 
+    // Token token = lex_state.get_token();
+    // int n = 0;
+    // while(token.kind() != Kind::NoMoreToken)
+    // {
+    //     std::cout << "Token: " << n << "   Start: " << token.start_pos() << "   End: " << token.end_pos()<< "   Kind: " << showKind(token.kind()) << "   Text: '" << token.text() << "'" << std::endl;
+    //     n++;
+    //     token = lex_state.get_token();
+    // }
+    // std::cout << "No more tokens!" << std::endl;
+
+    // program p = parse_program(lex_state);
+    exp e = parse_expression(lex_state);
+    std::cout << "exp: " << pp(e) << std::endl;
+    std::cout << "amswer = " << eval(e, empty()) << std::endl;
+    std::cout << "remaining tokens" << std::endl;
     Token token = lex_state.get_token();
     int n = 0;
     while(token.kind() != Kind::NoMoreToken)
@@ -118,37 +99,39 @@ void testlexer()
         token = lex_state.get_token();
     }
     std::cout << "No more tokens!" << std::endl;
+    // if (p) {}
 }
 
 int main()
 {
+    std::cout << "c-interpreter" << std::endl;
     testlexer();
 
-    std::cout << "c-interpreter" << std::endl;
-    // test(); // EBC remember to comment back
+    std::cout << "complete" << std::endl;
+    // // test(); // EBC remember to comment back
 
-    def timestwo = def1("timestwo", "x", add(var("x"), var("x")));
-    defs all_def = consDefs(timestwo, nilDefs());
+    // def timestwo = def1("timestwo", "x", add(var("x"), var("x")));
+    // defs all_def = consDefs(timestwo, nilDefs());
 
-    program my_program = makeProgram(all_def, add(num(9), call1("timestwo", add(num(5), num(9)))));
-    value result = execute(my_program);
-    std::cout << result << std::endl;
-
-
-    def quad = def1("quad", "x", add(call1("timestwo", var("x")), call1("timestwo", var("x"))));
-    defs more_def = consDefs(quad, all_def);
-    program my_program2 = makeProgram(more_def, call1("quad", num(2)));
-
-    value result2 = execute(my_program2);
-    std::cout << result2 << std::endl;
+    // program my_program = makeProgram(all_def, add(num(9), call1("timestwo", add(num(5), num(9)))));
+    // value result = execute(my_program);
+    // std::cout << result << std::endl;
 
 
-    def fact = def1("fact", "x", ite(less(var("x"), num(1)), num(1), mul(var("x"), call1("fact", sub(var("x"), num(1))))));
-    defs even_more_def = consDefs(fact, more_def);
-    program my_program3 = makeProgram(even_more_def, call1("fact", num(5)));
+    // def quad = def1("quad", "x", add(call1("timestwo", var("x")), call1("timestwo", var("x"))));
+    // defs more_def = consDefs(quad, all_def);
+    // program my_program2 = makeProgram(more_def, call1("quad", num(2)));
 
-    value result3 = execute(my_program3);
-    std::cout << result3 << std::endl;
+    // value result2 = execute(my_program2);
+    // std::cout << result2 << std::endl;
+
+
+    // def fact = def1("fact", "x", ite(less(var("x"), num(1)), num(1), mul(var("x"), call1("fact", sub(var("x"), num(1))))));
+    // defs even_more_def = consDefs(fact, more_def);
+    // program my_program3 = makeProgram(even_more_def, call1("fact", num(5)));
+
+    // value result3 = execute(my_program3);
+    // std::cout << result3 << std::endl;
 
     return 0;
 }
@@ -322,19 +305,19 @@ private:
 };
 
 
-static value eval(exp e, env env)
+value eval(exp e, env env)
 {
     return e->eval(nilDefs(), env);
 }
-static std::string pp(exp e)
+std::string pp(exp e)
 {
     return e->pp();
 }
-static exp num(int n)
+exp num(int n)
 {
     return new Num(n);
 }
-static exp var(std::string s)
+exp var(std::string s)
 {
     return new Var(s);
 }

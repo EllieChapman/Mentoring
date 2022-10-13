@@ -1,3 +1,6 @@
+#ifndef _LEXER_H
+#define _LEXER_H
+
 #include <string>
 #include <cassert>
 #include <unordered_map>
@@ -44,3 +47,5 @@ public:
   LexState(std::string input) : _whole_input(input), _index(0) {};
   Token get_token();
 };
+
+#endif
