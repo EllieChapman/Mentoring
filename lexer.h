@@ -1,7 +1,22 @@
 #include <string>
 #include <cassert>
+#include <unordered_map>
 
-enum Kind { NoMoreToken, UnknownCharacter, Identifier, Plus, LP, RP };
+enum Kind { NoMoreToken,
+            UnknownCharacter,
+            Identifier,
+            Number,
+            Plus,
+            Dash,
+            LP,
+            RP,
+            Definition,
+            If,
+            LChevron,
+            RChevron,
+            Star,
+            Colon,
+            SemiColon};
 
 #define kind_to_string(E) case E: return #E
 

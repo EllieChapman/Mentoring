@@ -101,7 +101,13 @@ void test(void) {
 
 void testlexer()
 {
-    LexState lex_state("(abcde  \n + 42");
+    // LexState lex_state("(abcde \n + 42345 89 6");
+
+    LexState lex_state("def fact(x):\n"
+    "if x < 10 then\n"
+    "  1\n"
+    "else\n"
+      "x * fact (n-1);");
 
     Token token = lex_state.get_token();
     int n = 0;
