@@ -13,6 +13,7 @@ std::string showKind(Kind k)
         kind_to_string(RP);
         kind_to_string(Plus);
         kind_to_string(Dash);
+        kind_to_string(Equals);
         kind_to_string(Definition);
         kind_to_string(If);
         kind_to_string(Then);
@@ -68,6 +69,8 @@ Token LexState::get_token()
                 return Token(s, Plus, start, _index-1);
             case '-':
                 return Token(s, Dash, start, _index-1);
+            case '=':
+                return Token(s, Equals, start, _index-1);
             case '(':
                 return Token(s, LP, start, _index-1);
             case ')':

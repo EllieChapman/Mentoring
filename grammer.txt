@@ -8,6 +8,7 @@ expression =
   | "if" expression "then" expression "else" expression
   | Identifier '(' expression ')
   | '(' expression bin_op expression ')'
+  | "let" Identifier '=' expression "in" expression
 
 bin_op = '+' | '-' | '*' | '<'
 

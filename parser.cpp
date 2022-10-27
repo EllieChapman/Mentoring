@@ -20,6 +20,14 @@ Kind peek_token(LexState ls) { // **no '&'; state unchanged
   return tok.kind();
 }
 
+void expect(LexState &ls, Kind k) { // **no '&'; state unchanged
+  Token tok = ls.get_token();
+  if (tok.kind() != k)
+  {
+    parse_crash("Token did not match expected kind: . " + showKind(k), tok);
+  }
+}
+
 
 // EBC need to add if then else, will also have to add them as token types to be lexed
 exp parse_expression(LexState &lx)
@@ -29,7 +37,22 @@ exp parse_expression(LexState &lx)
     switch(t.kind())
     {
         case Identifier:
-            return var(t.text());
+        {
+        // ebc peek next token, if not ( then is var, else is call to progrm
+            Kind k = peek_token(lx);
+            name n = t.text();
+            if (k != LP)
+            {
+                return var(n);
+            }
+            else
+            {
+                expect(lx, LP);
+                exp e = parse_expression(lx);
+                expect(lx, RP);
+                return call1(n, e);
+            }
+        }
         case Number:
             int i;
             sscanf(t.text().c_str(), "%d", &i);
@@ -70,6 +93,16 @@ exp parse_expression(LexState &lx)
                     }
                     return mul(eleft, eright);
                 }
+                case LChevron:
+                {
+                    exp eright = parse_expression(lx);
+                    Token t = lx.get_token();
+                    if (t.kind() != RP)
+                    {
+                        parse_crash("expected RP ", t);
+                    }
+                    return less(eleft, eright);
+                }
                 // EBC really need to add div to whole thing at some point
                 default:
                     parse_crash("Expected binop: ", t);
@@ -103,16 +136,57 @@ exp parse_expression(LexState &lx)
     return 0;
 }
 
+name parse_identifier(LexState &lx)
+{
+    Token t = lx.get_token();
+
+    switch(t.kind())
+    {
+        case Identifier:
+            return t.text();
+        default:
+            parse_crash("Identifier: ", t);
+    }
+    return 0;
+}   
+
+
+def parse_definition(LexState &lx)
+{
+    expect(lx, Definition);
+    name func_n = parse_identifier(lx);
+    expect(lx, LP);
+    name arg_n = parse_identifier(lx);
+    expect(lx, RP);
+    expect(lx, Colon);
+    exp body = parse_expression(lx);
+    expect(lx, SemiColon);
+
+    return def1(func_n, arg_n, body);
+}
+
+
+defs parse_definitions(LexState &lx)
+{
+    Kind k = peek_token(lx);
+    if (k == Definition)
+    {
+        def d = parse_definition(lx);
+        defs ds = parse_definitions(lx);
+        return consDefs(d, ds);
+    }
+    else
+    {
+        return nilDefs();
+    }
+}
 
 // EBC switch up for program level, uses parser for expressions
 // EBC probs want expect_token(Kind k) utility funciton
 // EBC want peek_token whihc is lik eget_token but dowsnst take referece
 program parse_program(LexState &lx)
 {
-    // when starting to parse program we either have a definition, or an expression.
-    // peek to see if next token if type Def
-        // if so parse def
-    // else remaining if exp, so call parse_exp
-    crash("undefined parse_program!");
-    return 0;
+    defs ds = parse_definitions(lx);
+    exp e = parse_expression(lx);
+    return makeProgram(ds, e);
 }
