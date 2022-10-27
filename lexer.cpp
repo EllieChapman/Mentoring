@@ -15,6 +15,8 @@ std::string showKind(Kind k)
         kind_to_string(Dash);
         kind_to_string(Definition);
         kind_to_string(If);
+        kind_to_string(Then);
+        kind_to_string(Else);
         kind_to_string(LChevron);
         kind_to_string(RChevron);
         kind_to_string(Star);
@@ -24,8 +26,11 @@ std::string showKind(Kind k)
     assert(false);
 }
 
+// EBC need to add if then else to here to thing above and to kind enum
 std::unordered_map<std::string,Kind> key_map = {{"def", Kind:Definition},
-                                                {"if", Kind::If}};
+                                                {"if", Kind::If},
+                                                {"then", Kind::Then},
+                                                {"else", Kind::Else}};
 
 static bool isWhite(char c)
 {
@@ -62,7 +67,7 @@ Token LexState::get_token()
             case '+':
                 return Token(s, Plus, start, _index-1);
             case '-':
-                return Token(s, Plus, start, _index-1);
+                return Token(s, Dash, start, _index-1);
             case '(':
                 return Token(s, LP, start, _index-1);
             case ')':

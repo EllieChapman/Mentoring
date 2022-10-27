@@ -67,7 +67,8 @@ void test(void) {
 
 void testlexer()
 {
-    LexState lex_state("(3 + 5)");
+    // LexState lex_state("(3 * 4)");
+    LexState lex_state("if (3 - 2) then if 1 then 2 else 3 else 5"); // EBC thik was brackets round if then else expressions!
 
     // LexState lex_state("def fact(x):\n"
     // "if x < 10 then\n"
@@ -88,7 +89,7 @@ void testlexer()
     // program p = parse_program(lex_state);
     exp e = parse_expression(lex_state);
     std::cout << "exp: " << pp(e) << std::endl;
-    std::cout << "amswer = " << eval(e, empty()) << std::endl;
+    std::cout << "answer = " << eval(e, empty()) << std::endl;
     std::cout << "remaining tokens" << std::endl;
     Token token = lex_state.get_token();
     int n = 0;
